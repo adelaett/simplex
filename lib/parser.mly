@@ -1,7 +1,7 @@
 %{
-	open Z;;
-	open Q;;
-	open Tableau;;
+	open Z
+	open Q
+	open Tableau
 %}
 
 %token EOF

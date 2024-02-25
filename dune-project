@@ -10,15 +10,21 @@
 
 (maintainers "Alain Dela\195\171t")
 
-(license GPL3)
+(license GPL-3.0-or-later)
 
-(documentation https://url/to/documentation)
+; (documentation https://url/to/documentation)
 
 (package
  (name simplex)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends
+  ocaml
+  dune
+  zarith
+  menhirLib
+  menhir
+  (ocaml-lsp-server :dev))
  (tags
   (topics "to describe" your project)))
 

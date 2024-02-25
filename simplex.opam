@@ -4,12 +4,15 @@ synopsis: "A short synopsis"
 description: "A longer description"
 maintainer: ["Alain Delaët"]
 authors: ["Alain Delaët"]
-license: "GPL3"
+license: "GPL-3.0-or-later"
 tags: ["topics" "to describe" "your" "project"]
-doc: "https://url/to/documentation"
 depends: [
   "ocaml"
   "dune" {>= "3.12"}
+  "zarith"
+  "menhirLib"
+  "menhir"
+  "ocaml-lsp-server" {dev}
   "odoc" {with-doc}
 ]
 build: [
