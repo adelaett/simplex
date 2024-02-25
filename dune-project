@@ -12,12 +12,10 @@
 
 (license GPL-3.0-or-later)
 
-; (documentation https://url/to/documentation)
-
 (package
  (name simplex)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Simplex algorithm implementation using exact computations")
+ (description "Simplex algorithm implementation using exact computations")
  (depends
   ocaml
   dune
@@ -26,6 +24,6 @@
   menhir
   (ocaml-lsp-server :dev))
  (tags
-  (topics "to describe" your project)))
+  (maths or-research)))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
