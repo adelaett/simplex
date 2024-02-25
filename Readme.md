@@ -1,5 +1,7 @@
 # Simplex implementation
 
+Create as an homework for https://pagesperso.g-scop.grenoble-inp.fr/~bousquen/OA/index.html.
+
 I have implemented the simplex algorithm in OCaml. I use zarith, menhir and seq packages (avalable in opam) and standard library.
 
 ## How to run an instance
@@ -42,6 +44,7 @@ The simplex algorithm is in the file tableau.ml. This include
  * functions to implement the simplex
 
 The program is well-typed and contains many assertion tests. Thoses asserts add to the time to run an instance, but are necessary to check for errors. For example before each pivot, we check that the entering and leaving variables are indeed alive variables.
+
 
 #### Tableau type
 
