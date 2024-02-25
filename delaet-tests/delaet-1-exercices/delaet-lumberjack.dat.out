@@ -1,0 +1,23 @@
+maximize   50  120  0  0  |  0
+--------------------------------------------------------------------------------
+subject to 1  1  1  0  |  100
+           10  50  0  1  |  4000
+entering : 0
+leaving :  2
+maximize   0  70  -50  0  |  -5000
+--------------------------------------------------------------------------------
+subject to 1  1  1  0  |  100
+           0  40  -10  1  |  3000
+
+entering : 1
+leaving :  3
+maximize   0  0  -65/2  -7/4  |  -10250
+--------------------------------------------------------------------------------
+subject to 1  0  5/4  -1/40  |  25
+           0  1  -1/4  1/40  |  75
+
+The problem is FEASIBLE and BOUNDED
+One solution is x = { 25, 75 }
+The objective value for this solution is: 10250
+The number of pivots is: 2
+The rule used: bland
