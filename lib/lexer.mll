@@ -1,6 +1,5 @@
 {
-    open Z;;
-    open Parser;;
+    open Parser
     let comment_depth = ref 0;;
     let line = ref 0;;
 }

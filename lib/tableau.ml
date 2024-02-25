@@ -64,7 +64,7 @@ let string_of_line a =
   let rec aux l =
     match l with
     | [] -> l
-    | [h] -> "|" :: l
+    | [_] -> "|" :: l
     | h :: t -> h :: (aux t)
   in
   Array.to_list a |>
@@ -75,7 +75,7 @@ let string_of_line a =
 
 let print_tableau tb =
   begin match tb.objectives with
-    | h::t ->
+    | _::t ->
       List.iter begin fun x ->
         print_string "           ";
         print_endline (string_of_line x)
@@ -101,7 +101,7 @@ let tableau_convert (p: prog) =
 
     (* Basic assert to check we done nothing strange *)
     assert (Array.length obj = n);
-    assert (List.for_all (fun (c, v) -> Array.length c = n) constr);
+    assert (List.for_all (fun (c, _) -> Array.length c = n) constr);
 
     (* number of constraints *)
     let m = List.length constr in
@@ -109,7 +109,7 @@ let tableau_convert (p: prog) =
     (* all the unsound constraints. ie, the lhs is lesser than 0. We will
        create artifical variable for each one.*)
     let unsound_constr = constr |>
-    List.mapi begin fun i (c, v) ->
+    List.mapi begin fun i (_, v) ->
         if Q.lt v Q.zero then
             Some i
         else
@@ -191,7 +191,7 @@ let mul_lin a c =
 let do_pivot tb x y =
     if !debug then
     print_endline "début pivot";
-    let {t; basis; var_set; objectives} = tb in
+    let {t; basis; var_set; objectives; _} = tb in
     (* number of constraints *)
     let m = Array.length t in
     if !verbose then
@@ -279,7 +279,7 @@ let choose_leaving ?ignore_neg:(ignore_neg=false) tb x =
     print_endline "début leaving";
   if !debug then
     print_tableau tb;
-    let {t} = tb in
+    let {t; _} = tb in
     let v = ref [] in
     let m = Array.length t in
     if not ignore_neg then
@@ -358,7 +358,7 @@ let transition tb =
     (* v contains artificials variables *)
     let v = List.hd tb.variables in
     let new_vars = List.flatten (List.tl tb.variables) in
-    let {t; basis} = tb in
+    let {t; _} = tb in
     List.iter begin fun x ->
         if Array.mem x tb.basis then begin
             (* custom choose of some variable which is positive *)
