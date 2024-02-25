@@ -1,0 +1,8 @@
+(library
+ (name simplex)
+ (libraries zarith menhirSdk))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
