@@ -1,6 +1,4 @@
 open Simplex
-open Lexer
-open Parser
 open Tableau
 open Macro
 

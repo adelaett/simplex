@@ -1,6 +1,4 @@
 %{
-	open Z
-	open Q
 	open Tableau
 %}
 
