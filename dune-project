@@ -24,6 +24,6 @@
   menhir
   (ocaml-lsp-server :dev))
  (tags
-  (maths or-research)))
+  (maths or-research linear-programming)))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
