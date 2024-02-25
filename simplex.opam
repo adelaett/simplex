@@ -5,7 +5,7 @@ description: "Simplex algorithm implementation using exact computations"
 maintainer: ["Alain Delaët"]
 authors: ["Alain Delaët"]
 license: "GPL-3.0-or-later"
-tags: ["maths" "or-research"]
+tags: ["maths" "or-research" "linear-programming"]
 depends: [
   "ocaml"
   "dune" {>= "3.12"}
