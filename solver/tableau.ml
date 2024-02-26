@@ -227,7 +227,7 @@ let choose_entering tb =
       (fun x -> if Q.gt obj.(x) Q.zero then v := (obj.(x), x) :: !v)
       tb.var_set;
     let v = List.fast_sort (lex_compare Q.compare compare) !v in
-    apply_opt snd (List.nth_opt v 0))
+    Option.map snd (List.nth_opt v 0))
   else failwith "Unkown rule"
 
 let choose_leaving ?(ignore_neg = false) tb x =
@@ -261,7 +261,7 @@ let choose_leaving ?(ignore_neg = false) tb x =
       (String.concat "; "
          (List.map (fun (a, b) -> Q.to_string a ^ ", " ^ string_of_int b) v));
   if !debug then print_endline "fin leaving";
-  apply_opt snd (List.nth_opt v 0)
+  Option.map snd (List.nth_opt v 0)
 
 type result = Finished of Q.t array * Q.t | Unbounded | Paused | Unfeasible
 
