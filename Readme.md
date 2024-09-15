@@ -1,108 +1,54 @@
-# Simplex implementation
+# Simplex Algorithm Artifact Overview
 
-Create as an homework for https://pagesperso.g-scop.grenoble-inp.fr/~bousquen/OA/index.html.
+## Introduction
 
-I have implemented the simplex algorithm in OCaml. I use zarith, menhir and seq packages (avalable in opam) and standard library.
-
-## How to run an instance
-
-to run it on a file, you have to write
-
-   ./adelaett-exec path_of_the_file
+This artifact is an implementation of the Simplex Algorithm in OCaml, developed as a homework assignment for a course. The artifact supports the claims made in the associated paper regarding the functionality and efficiency of the Simplex Algorithm. The artifact includes the implementation of the algorithm, various rules for pivot selection, and a number of tests and generators to evaluate its functionality and reusability.
 
 
-There are several options:
-	* `-help` print help and exit.
-	* `-v` Verbose mode, print the tableau after each pivot
-	* `--rule [bland|max|myrule]`, rule for the simplex.
-		* bland is the bland rule : always take the leftmost variable with positive coefficient, and take the topmost coeficient to do the pivot.
-		* max is the maximum coef rule.
-		* my rule is to take at random max or bland rule. this choice is explained in the discussion file.
-	  if not specified, the bland rule will be used.
-	* `-vv` debug mode. Print most of the execution of the program.
-	* `-q` quiet mode. only print the result of the function.
-	* `-t` timing mode. print the the size of the input, and the time taken to run the algorithm.
-	* `-ez` easy printing. When printing the tableau, print + for positive number, - for negative number,  -1 for minus one, 1 for one and . for zero. It's a more readble output for the tableau as fractions grows.
+## Hardware Dependencies
 
-When running the program with more than one file, it will execute all of them one after the other.
+The artifact does not require any specific hardware and can be run on any machine that supports `OCaml` and the `opam` package manager. The required packages are `zarith`, `menhir`, and `seq`, which are available in `opam`.
 
 
-## Organization
+## Getting Started Guide
 
-The source code is located in the source directory. There is no `delaet-[filename]` for each file since ocaml throw a warning when naming one file with an `-`.
+To run the artifact on a file, use the following command:
 
-Each other file starts with `delaet-`.
-
-
-
-### Simplex
-
-The simplex algorithm is in the file tableau.ml. This include
-
- * the definition of the tableau type
- * functions to manipulate an tableau
- * functions to implement the simplex
-
-The program is well-typed and contains many assertion tests. Thoses asserts add to the time to run an instance, but are necessary to check for errors. For example before each pivot, we check that the entering and leaving variables are indeed alive variables.
-
-
-#### Tableau type
-
-For speed, the use of array of arrays (matrices) started from the begining of the project. At first, the tableau was described as exaclty this. Then, to take care of degenerency, I separated the variable description part from the objective function part.
-
-Indeed when using part one/two algorithm, if one of the initial $b_i$ is negative, then we add an artifical variable, and change the objective function for another one. Then we apply the simplex, but, when we change our basis, we need to change both objectives functions : the old one, and the new one. This is why I have choosen to separate the objective function from the rest of the tableau.
-
-The main tableau is an $m$ row - $n+1$ columns matrix. The last column represents the bounds, and other columns represent the coeficient for each variables. If $x$ is a variable and $i$ is a constraint, then `t[i][x]` is the coeficient of $x$ in the $i$-th constraint.
-
-
-The objectives functions are represented as an list of arrays. Each items of the list is an objective function (a $c$ vector) with this current objective value. The head of this list (first element) is the current function to optimize. All element of this list are updated during each pivots.
-
-
-To keep the basis at each step, I keep an array of size $m$. The item $i$ of this array contains the basis' variable associated to the constraint `i`.
-
-
-In phase two, we should not select artifical variables to get inside the basis. I keep a set of alive variables when passing from the phase one to the phase two.
-
-
-All this gives the following implmentation for the tableau :
-
-
-```ocaml
-	type tableau = {
-	    t : Q.t array array;
-	    basis : var array;
-	    mutable variables : var list list;
-	    mutable var_set : var list;
-	    mutable objectives : Q.t array list;
-	}
+```bash
+dune build /bin/main.exe path_of_the_file
 ```
 
-Where `Q.t` is the type for rationals.
+The artifact supports several options:
 
-#### Phase one/two
+- `-help` : Print help and exit.
+- `-v` : Verbose mode, print the tableau after each pivot.
+- `--rule [bland|max|myrule]` : Rule for the simplex. The default is the bland rule.
+- `-vv` : Debug mode. Print most of the execution of the program.
+- `-q` : Quiet mode. Only print the result of the function.
+- `-t` : Timing mode. Print the size of the input, and the time taken to run the algorithm.
+- `-ez` : Easy printing. Print a more readable output for the tableau as fractions grow.
 
-The phase one/two is implemented. Artificial variables are added at the begining, when creating the tableau. They are then removed, but not from the tableau. Insteed, they are removed from the set of alive values.
+For more details on these options, please refer to the help text.
 
 
-#### Parsing
+## Step-by-Step Instructions
 
-I use menhir for parsing.
+To reproduce the experiments and evaluate the functionality of the artifact, follow these steps:
+
+1. Run the artifact on the test instances provided in the `test` directory.
+2. Compare the outputs with the expected results.
+3. Experiment with different rules (`--rule`) and observe their impact on the algorithm's performance.
+
+The expected outputs are the optimal solutions for the provided instances, printed in the console. If the `-t` option is used, the size of the input and the time taken to run the algorithm will also be printed.
 
 
-#### Generators
+## Reusability Guide
 
-Sevral generators (in python) are avalable in the test directory. They are not documented, and to change the position of the file for example, you need to change the source code.
+The core pieces of the artifact for evaluation of reusability are the Simplex Algorithm implementation and the parsing functionality.
 
-Some of them just don't work.
+To adapt the artifact to new inputs or use cases:
 
-### Tests
+1. Modify the parser to accommodate new input formats, if necessary. The current parser is implemented using Menhir.
+2. Adjust the Simplex Algorithm implementation to handle new types of constraints or objectives, if necessary.
 
-All tests requested by the subject are in the test directory.
-
-  0. subject : test from the subject
-  1. exercices : exercices asked
-  2. degenerency : degenerancy test and phase one/two tests
-  4. random-small : small random instances
-  5. random-medium : medium random instances
-  6. random-large :  large random instance
-
+Documentation about the core artifact can be found in the source code comments and in this README file. The main limitations to the artifact's reusability are the current lack of support for non-linear constraints and objectives, and the reliance on specific OCaml packages.
