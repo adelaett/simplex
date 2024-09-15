@@ -1,4 +1,4 @@
 (executable
  (public_name simplex)
  (name main)
- (libraries simplex))
+ (libraries simplex base matplotlib stdio))

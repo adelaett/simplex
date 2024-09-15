@@ -22,6 +22,8 @@
   zarith
   menhirLib
   menhir
+  matplotlib
+  base
   (ocaml-lsp-server :dev))
  (tags
   (maths or-research linear-programming)))
