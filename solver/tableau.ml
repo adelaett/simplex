@@ -1,4 +1,4 @@
-open Macro
+open Util
 open Params
 
 type prog = {

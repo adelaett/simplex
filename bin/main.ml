@@ -1,6 +1,6 @@
 open Simplex
 open Tableau
-open Macro
+open Util
 
 let parse_file filename =
   let lexbuf = Lexing.from_channel (open_in filename) in
