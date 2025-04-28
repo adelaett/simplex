@@ -45,9 +45,9 @@ def mapping(direc, gen):
 def main():
     gen = lambda: F(random.randrange(-1000, 1000), 100)
 
-    # test("4-random-small", 100, 5, 5, gen)
-    # test("5-random-medium", 100, 20, 60, gen)
-    # test("6-random-large", 100, 100, 300, gen)
+    # test("4-random-small.t", 100, 5, 5, gen)
+    # test("5-random-medium.t", 100, 20, 60, gen)
+    # test("6-random-large.t", 100, 100, 300, gen)
     mapping("7-map", gen)
 
 
