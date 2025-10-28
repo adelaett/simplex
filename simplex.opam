@@ -12,8 +12,6 @@ depends: [
   "zarith"
   "menhirLib"
   "menhir"
-  "matplotlib"
-  "base"
   "ocaml-lsp-server" {dev}
   "odoc" {with-doc}
 ]
