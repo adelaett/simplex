@@ -1,0 +1,10 @@
+  $ simplex -v test00.txt | diff - test00.txt.out
+  $ simplex -v test01.txt | diff - test01.txt.out
+  $ simplex -v test02.txt | diff - test02.txt.out
+  $ simplex -v test03.txt | diff - test03.txt.out
+  $ simplex -v test04.txt | diff - test04.txt.out
+  $ simplex -v test05.txt | diff - test05.txt.out
+  $ simplex -v test06.txt | diff - test06.txt.out
+  $ simplex -v test07.txt | diff - test07.txt.out
+  $ simplex -v test08.txt | diff - test08.txt.out
+  $ simplex -v test09.txt | diff - test09.txt.out
