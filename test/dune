@@ -1,2 +1,2 @@
-(test
- (name test_simplex))
+(cram
+ (deps %{bin:simplex}))

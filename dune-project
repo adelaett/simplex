@@ -6,9 +6,9 @@
 
 (generate_opam_files true)
 
-(authors "Alain Dela\195\171t")
+(authors "Alain Delaët")
 
-(maintainers "Alain Dela\195\171t")
+(maintainers "Alain Delaët")
 
 (license GPL-3.0-or-later)
 
