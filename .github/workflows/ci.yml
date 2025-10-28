@@ -1,0 +1,52 @@
+name: Builds and tests
+
+on:
+  - push
+  - pull_request
+
+permissions: read-all
+
+jobs:
+  build-and-test:
+    permissions:
+      attestations: write
+      id-token: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        ocaml-compiler:
+          - 5
+          - 4
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v5
+
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
+      - run: opam install . --deps-only --with-test
+
+      - run: opam exec -- dune build
+
+      - run: opam exec -- dune runtest
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: _build/default/simplex.exe
+
+      - name: Upload the build artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.os }}-${{ matrix.ocaml-compiler }}-world.exe
+          path: _build/default/bin/simplex.exe
