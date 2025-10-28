@@ -1,4 +1,4 @@
 (executable
  (public_name simplex)
  (name main)
- (libraries simplex base stdio))
+ (libraries simplex))

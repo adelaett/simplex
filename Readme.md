@@ -7,7 +7,12 @@ This artifact is an implementation of the Simplex Algorithm in OCaml, developed 
 
 ## Hardware Dependencies
 
-The artifact does not require any specific hardware and can be run on any machine that supports `OCaml` and the `opam` package manager. The required packages are `zarith`, `menhir`, and `seq`, which are available in `opam`.
+The artifact does not require any specific hardware and can be run on any machine that supports `OCaml` and the `opam` package manager. The required packages are `zarith`, `menhir`, which are available in `opam`. After installing `opam` you can run the folling command to install requirements:
+
+```bash
+opam install ./ --deps-only
+```
+
 
 
 ## Getting Started Guide
@@ -15,8 +20,15 @@ The artifact does not require any specific hardware and can be run on any machin
 To run the artifact on a file, use the following command:
 
 ```bash
-dune build /bin/main.exe path_of_the_file
+dune exec simplex input.in
 ```
+
+The file format for input files is as follows. The first line contains the number of variables. The second line contains the number of contraints. The third line contains the objective coeficients for each of the variables $c$. The fourth line contains the contraints bounds $b$. The following lines contains the contraint matrix $A$.
+
+The problem instance to solve is
+
+$$ \min_x c^T x \quad \text{ subject to } \quad A x \leq b$$
+
 
 The artifact supports several options:
 
@@ -28,14 +40,18 @@ The artifact supports several options:
 - `-t` : Timing mode. Print the size of the input, and the time taken to run the algorithm.
 - `-ez` : Easy printing. Print a more readable output for the tableau as fractions grow.
 
-For more details on these options, please refer to the help text.
 
 
 ## Step-by-Step Instructions
 
 To reproduce the experiments and evaluate the functionality of the artifact, follow these steps:
 
-1. Run the artifact on the test instances provided in the `test` directory.
+1. Run the artifact on the test instances provided in the `test` directory using the command
+
+```bash
+dune runtest
+```
+
 2. Compare the outputs with the expected results.
 3. Experiment with different rules (`--rule`) and observe their impact on the algorithm's performance.
 
@@ -50,5 +66,3 @@ To adapt the artifact to new inputs or use cases:
 
 1. Modify the parser to accommodate new input formats, if necessary. The current parser is implemented using Menhir.
 2. Adjust the Simplex Algorithm implementation to handle new types of constraints or objectives, if necessary.
-
-Documentation about the core artifact can be found in the source code comments and in this README file. The main limitations to the artifact's reusability are the current lack of support for non-linear constraints and objectives, and the reliance on specific OCaml packages.
