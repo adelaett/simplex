@@ -70,7 +70,11 @@ let speclist =
     ("-v", Set Params.verbose, "verbose mode");
     ("-vv", Set Params.debug, "debug mode");
     ("-q", Set Params.quiet, "quiet mode");
-    ("--rule", Set_string Params.rule, "What rule is to be used");
+    ( "--rule",
+      Set_string Params.rule,
+      "Pivot rule: bland (default, anti-cycling), dantzig (most positive \
+       reduced cost), steepest (steepest-edge approximation, usually fewest \
+       pivots), max, or myrule" );
     ("-ez", Set Params.ez, "easy printing of tableau");
     ("-t", Set Params.time, "Show timing insted of calcul result. Imply quiet");
   ]
