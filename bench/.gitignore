@@ -1,0 +1,17 @@
+# uv-managed virtualenv (recreated from uv.lock)
+.venv/
+
+# Generated instances (reproducible from gen_instances.py + fixed seeds)
+instances/train/
+instances/heldout/
+
+# Benchmark reports and recorded baselines (machine-specific, regenerable)
+*.json
+!uv.lock
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Gurobi stray log (also suppressed via LogFile= in oracle.py)
+gurobi.log
