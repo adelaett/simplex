@@ -51,7 +51,7 @@ def regenerate_splits():
     generate_split("heldout", HELDOUT_DIR)
 
 
-def measure_ref(ref, side, rule, trials):
+def measure_ref(ref, side, rule, trials, warmup):
     """Check out `ref` into a throwaway worktree, build it, and measure it.
 
     The ref is checked out with `git worktree add --detach`, the solver is built
@@ -75,7 +75,7 @@ def measure_ref(ref, side, rule, trials):
             print(f"[{side}] building and measuring '{ref}' (rule={rule})...",
                   file=sys.stderr)
             return run_corpus(HELDOUT_DIR, rule, trials, f"{side}:{ref}",
-                             root=ref_root)
+                             root=ref_root, warmup=warmup)
         finally:
             # Drop the temp worktree registration (the dir is cleaned up by
             # TemporaryDirectory; --force also drops the now-missing checkout).
@@ -83,11 +83,11 @@ def measure_ref(ref, side, rule, trials):
                            cwd=root, capture_output=True, text=True)
 
 
-def do_compare(baseline_ref, candidate_ref, rule, trials):
+def do_compare(baseline_ref, candidate_ref, rule, trials, warmup):
     """Compare two git refs: build+measure each in its own worktree, then judge."""
     try:
-        baseline = measure_ref(baseline_ref, "baseline", rule, trials)
-        candidate = measure_ref(candidate_ref, "candidate", rule, trials)
+        baseline = measure_ref(baseline_ref, "baseline", rule, trials, warmup)
+        candidate = measure_ref(candidate_ref, "candidate", rule, trials, warmup)
     except RuntimeError as e:
         print(str(e), file=sys.stderr)
         return 2
@@ -109,13 +109,18 @@ def main():
                     help="pivot rule under test (default: bland)")
     ap.add_argument("--trials", type=int,
                     default=int(os.environ.get("TRIALS", "15")),
-                    help="solver in-process --repeat count for timing")
+                    help="timed in-process re-solves per instance (default 15)")
+    ap.add_argument("--warmup", type=int,
+                    default=int(os.environ.get("WARMUP", "3")),
+                    help="untimed in-process warmup solves per instance "
+                         "(default 3)")
     args = ap.parse_args()
 
     # Always refresh the corpus so it is reproducible and never stale.
     regenerate_splits()
 
-    sys.exit(do_compare(args.baseline, args.candidate, args.rule, args.trials))
+    sys.exit(do_compare(args.baseline, args.candidate, args.rule, args.trials,
+                        args.warmup))
 
 
 if __name__ == "__main__":

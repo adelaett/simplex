@@ -66,13 +66,35 @@ def build_solver(root=None):
     return exe
 
 
-def run_solver_json(exe, rule, instance, repeat):
+def require_json_support(exe, ref_label):
+    """Fail fast, with a clear message, if this solver lacks the -json flag.
+
+    -json is the sole metric source; there is no fallback. A ref that predates the
+    -json commit builds a solver whose Arg.parse rejects the flag with an
+    "unknown option" message. Rather than let that surface later as an
+    unparseable-JSON error (or, worse, a bogus comparison), we detect it up front
+    and explain exactly what to do.
+    """
+    proc = subprocess.run([exe, "-json", "--repeat", "1", "-q", os.devnull],
+                          capture_output=True, text=True)
+    blob = proc.stdout + proc.stderr
+    if "unknown option" in blob and "-json" in blob:
+        raise RuntimeError(
+            f"ref '{ref_label}' has no -json support: its solver does not "
+            f"understand the -json flag, which is the benchmark's only metric "
+            f"source.\nFix: pick a baseline that already has -json, or rebase the "
+            f"-json commit onto '{ref_label}' first.")
+
+
+def run_solver_json(exe, rule, instance, repeat, warmup):
     """Run the solver in -json mode and return the parsed metrics dict.
 
-    The solver re-solves `repeat` times in-process and emits one JSON object with
-    status, objective (exact rational + float), pivots, and min/median solve time.
+    The solver runs `warmup` untimed solves, then `repeat` timed ones, and emits
+    one JSON object with status, objective (exact rational + float), pivots, and
+    min/median solve time over the timed samples.
     """
-    args = [exe, "-json", "--repeat", str(repeat), "--rule", rule, instance]
+    args = [exe, "-json", "--repeat", str(repeat), "--warmup", str(warmup),
+            "--rule", rule, instance]
     proc = subprocess.run(args, capture_output=True, text=True, timeout=300)
     out = proc.stdout.strip()
     try:
@@ -87,15 +109,15 @@ def run_solver_json(exe, rule, instance, repeat):
 # Per-instance measurement
 # ---------------------------------------------------------------------------
 
-def measure_instance(exe, rule, instance, oracle_result, trials):
+def measure_instance(exe, rule, instance, oracle_result, trials, warmup):
     """Check correctness against the oracle and record the solver's own metrics.
 
-    `trials` is passed to the solver as --repeat (its in-process timing loop).
-    Returns a dict with the correctness verdict and the solver's reported metrics.
+    `trials`/`warmup` become the solver's --repeat/--warmup (its in-process timing
+    loop). Returns a dict with the correctness verdict and the solver's metrics.
     """
     o_status, o_value = oracle_result
 
-    m = run_solver_json(exe, rule, instance, trials)
+    m = run_solver_json(exe, rule, instance, trials, warmup)
     s_status = m["status"]
     s_value = m.get("value")            # absent for infeasible/unbounded
 
@@ -122,14 +144,15 @@ def measure_instance(exe, rule, instance, oracle_result, trials):
 # Corpus driver
 # ---------------------------------------------------------------------------
 
-def run_corpus(instances_dir, rule, trials, label, root=None):
+def run_corpus(instances_dir, rule, trials, label, root=None, warmup=3):
     """Build the solver (at `root`), then measure it over the corpus.
 
     `root` selects which checkout to build (defaults to this worktree); passing a
     temporary git-worktree root lets a caller measure a different revision.
-    `trials` is the solver's in-process --repeat count.
+    `trials`/`warmup` are the solver's in-process --repeat/--warmup counts.
     """
     exe = build_solver(root)
+    require_json_support(exe, label)
     instances = sorted(
         os.path.join(instances_dir, f)
         for f in os.listdir(instances_dir) if f.endswith(".in"))
@@ -140,7 +163,7 @@ def run_corpus(instances_dir, rule, trials, label, root=None):
     all_correct = True
     for inst in instances:
         oracle_result = oracle_solve(inst)          # (status, value)
-        r = measure_instance(exe, rule, inst, oracle_result, trials)
+        r = measure_instance(exe, rule, inst, oracle_result, trials, warmup)
         results.append(r)
         if not r["correct"]:
             all_correct = False
@@ -156,6 +179,7 @@ def run_corpus(instances_dir, rule, trials, label, root=None):
         "rule": rule,
         "instances_dir": os.path.abspath(instances_dir),
         "trials": trials,
+        "warmup": warmup,
         "all_correct": all_correct,
         "results": results,
     }
@@ -167,11 +191,14 @@ def main():
     ap.add_argument("--rule", default="bland")
     ap.add_argument("--trials", type=int, default=15,
                     help="solver in-process --repeat count for timing")
+    ap.add_argument("--warmup", type=int, default=3,
+                    help="solver in-process --warmup (untimed) count")
     ap.add_argument("--label", default="run", help="label stored in the report")
     ap.add_argument("--out", help="write JSON report here (default: stdout)")
     args = ap.parse_args()
 
-    report = run_corpus(args.instances, args.rule, args.trials, args.label)
+    report = run_corpus(args.instances, args.rule, args.trials, args.label,
+                        warmup=args.warmup)
     text = json.dumps(report, indent=2)
     if args.out:
         with open(args.out, "w") as f:
