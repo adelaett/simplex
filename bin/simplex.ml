@@ -92,8 +92,16 @@ let solve_file file_name =
   Params.handle ();
   if !Params.json then (
     (* Metrics mode: re-parse + solve `repeat` times, timing each solve in
-       isolation (parse excluded), so the reported time is pure solve cost. *)
+       isolation (parse excluded), so the reported time is pure solve cost.
+       `warmup` untimed solves run first so the timed samples reflect steady
+       state (cache/allocator warmed, first-touch effects excluded). *)
     let repeat = max 1 !Params.repeat in
+    let warmup = max 0 !Params.warmup in
+    for _ = 1 to warmup do
+      let tb = parse_file file_name in
+      reset Params.nb_pivots;
+      ignore (do_simplex tb)
+    done;
     let times = ref [] in
     let last = ref None in
     let n = ref 0 and m = ref 0 and pivots = ref 0 in
@@ -144,6 +152,10 @@ let speclist =
     ( "--repeat",
       Set_int Params.repeat,
       "In -json mode, re-solve this many times in-process for timing (default 1)"
+    );
+    ( "--warmup",
+      Set_int Params.warmup,
+      "In -json mode, untimed solves to run before the timed ones (default 0)"
     );
   ]
 

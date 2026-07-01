@@ -9,9 +9,11 @@ let nb_pivots = ref 0
 
 (* Machine-readable metrics mode: emit a single JSON object at the end and
    suppress all human-facing output. `repeat` re-runs the solve in-process so the
-   reported time excludes process startup + parsing overhead. *)
+   reported time excludes process startup + parsing overhead. `warmup` untimed
+   solves run first so the timed samples reflect steady state. *)
 let json = ref false
 let repeat = ref 1
+let warmup = ref 0
 
 let handle () =
   verbose := !verbose || !debug;
