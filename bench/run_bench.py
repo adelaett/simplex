@@ -21,13 +21,13 @@ Pivot count (also from the JSON) is deterministic, so it is a stability anchor:
 if pivots are unchanged but time moved, the change is per-pivot cost (e.g.
 rational blow-up), which we want to see, not hide.
 
-Output: a JSON report to stdout (or --out), consumed by compare.py.
+`run_corpus()` returns a report dict consumed by compare.py; it is imported by
+evaluate.py, which is the harness's sole entry point.
 
 The solver binary is located by running `dune build` then using the known
 `_build/default/bin/simplex.exe` path under the dune project root.
 """
 
-import argparse
 import json
 import os
 import subprocess
@@ -183,31 +183,3 @@ def run_corpus(instances_dir, rule, trials, label, root=None, warmup=3):
         "all_correct": all_correct,
         "results": results,
     }
-
-
-def main():
-    ap = argparse.ArgumentParser(description="Run + time + correctness-check the solver.")
-    ap.add_argument("--instances", required=True, help="directory of .in instances")
-    ap.add_argument("--rule", default="bland")
-    ap.add_argument("--trials", type=int, default=15,
-                    help="solver in-process --repeat count for timing")
-    ap.add_argument("--warmup", type=int, default=3,
-                    help="solver in-process --warmup (untimed) count")
-    ap.add_argument("--label", default="run", help="label stored in the report")
-    ap.add_argument("--out", help="write JSON report here (default: stdout)")
-    args = ap.parse_args()
-
-    report = run_corpus(args.instances, args.rule, args.trials, args.label,
-                        warmup=args.warmup)
-    text = json.dumps(report, indent=2)
-    if args.out:
-        with open(args.out, "w") as f:
-            f.write(text)
-        print(f"\nwrote report to {args.out}", file=sys.stderr)
-        print(f"all_correct={report['all_correct']}", file=sys.stderr)
-    else:
-        print(text)
-
-
-if __name__ == "__main__":
-    main()

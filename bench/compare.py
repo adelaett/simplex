@@ -23,17 +23,14 @@ a CANDIDATE report (both produced by run_bench.py on the SAME instance set), it:
      not, the improvement is in per-pivot cost (and vice-versa). Surfaced, never
      hidden, so per-pivot regressions (e.g. rational blow-up) can't sneak through.
 
-Exit code: 0 if the candidate is ACCEPTED (correct AND significantly faster),
-1 otherwise. This makes it directly usable as a loop gate.
+`compare()` returns a verdict dict (`accepted` is the headline); `format_verdict()`
+renders it. Both are imported by evaluate.py -- this module has no CLI of its own.
 
 Bootstrap uses a fixed seed so the verdict is reproducible run-to-run given the
 same reports.
 """
 
-import argparse
-import json
 import math
-import sys
 
 import numpy as np
 
@@ -50,18 +47,9 @@ def _geomean(xs):
     return math.exp(sum(math.log(x) for x in xs) / len(xs))
 
 
-def load(path):
-    with open(path) as f:
-        return json.load(f)
-
-
-def index_by_instance(report):
-    return {r["instance"]: r for r in report["results"]}
-
-
 def compare(baseline, candidate):
-    b_idx = index_by_instance(baseline)
-    c_idx = index_by_instance(candidate)
+    b_idx = {r["instance"]: r for r in baseline["results"]}
+    c_idx = {r["instance"]: r for r in candidate["results"]}
     common = sorted(set(b_idx) & set(c_idx))
     if not common:
         raise RuntimeError("baseline and candidate share no instances")
@@ -100,16 +88,16 @@ def compare(baseline, candidate):
     pivot_geomean = _geomean(pivot_ratios) if pivot_ratios else None
 
     # --- bootstrap CI on the geomean of time ratios -----------------------
+    # Resample the per-instance log-ratios with replacement; the geomean of a
+    # resample is exp(mean of its logs). One vectorized draw of shape
+    # (resamples, n) does all BOOTSTRAP_RESAMPLES at once.
     rng = np.random.default_rng(SEED)
-    log_ratios = np.log(np.array(time_ratios))
-    n = len(log_ratios)
-    means = np.empty(BOOTSTRAP_RESAMPLES)
-    for i in range(BOOTSTRAP_RESAMPLES):
-        sample = rng.choice(log_ratios, size=n, replace=True)
-        means[i] = sample.mean()
-    geomeans = np.exp(means)
-    lo = float(np.quantile(geomeans, (1 - CI) / 2))
-    hi = float(np.quantile(geomeans, 1 - (1 - CI) / 2))
+    log_ratios = np.log(time_ratios)
+    resamples = rng.choice(log_ratios, size=(BOOTSTRAP_RESAMPLES, len(log_ratios)),
+                           replace=True)
+    geomeans = np.exp(resamples.mean(axis=1))
+    lo, hi = np.quantile(geomeans, [(1 - CI) / 2, 1 - (1 - CI) / 2])
+    lo, hi = float(lo), float(hi)
 
     significant_speedup = candidate_correct and lo > 1.0
     significant_regression = hi < 1.0
@@ -175,29 +163,3 @@ def format_verdict(v, baseline_label, candidate_label):
         lines.append("VERDICT: REJECTED "
                      "(no significant improvement: CI includes 1.0)")
     return "\n".join(lines)
-
-
-def main():
-    ap = argparse.ArgumentParser(
-        description="Decide whether a candidate is a real, significant improvement.")
-    ap.add_argument("baseline", help="baseline JSON report")
-    ap.add_argument("candidate", help="candidate JSON report")
-    ap.add_argument("--json", action="store_true",
-                    help="emit the verdict as JSON instead of text")
-    args = ap.parse_args()
-
-    b = load(args.baseline)
-    c = load(args.candidate)
-    v = compare(b, c)
-
-    if args.json:
-        print(json.dumps(v, indent=2))
-    else:
-        print(format_verdict(v, b.get("label", args.baseline),
-                             c.get("label", args.candidate)))
-
-    sys.exit(0 if v["accepted"] else 1)
-
-
-if __name__ == "__main__":
-    main()

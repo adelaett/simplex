@@ -175,7 +175,6 @@ def family_klee_minty(rng, d):
     Exact-rational arithmetic makes coefficients grow with d, so d is kept small.
     `rng` is unused (deterministic family) but kept for a uniform interface.
     """
-    n = d
     c = [10 ** (d - i - 1) for i in range(d)]           # i is 0-based here
     A = []
     b = []
@@ -197,7 +196,6 @@ def family_degenerate(rng, n, extra):
     (Bland). Feasible at x = 0. Complements Klee-Minty with a *degeneracy* stress
     rather than an *exponential-path* stress.
     """
-    m = n + extra
     c = [rng.randint(1, 9) for _ in range(n)]
     A = []
     b = []

@@ -30,7 +30,6 @@ This module orchestrates the other bench modules by importing them directly
 """
 
 import argparse
-import json
 import os
 import subprocess
 import sys

@@ -122,8 +122,8 @@ that only wins by memorizing the train instances will not clear the held-out gat
 | `gen_instances.py` | seeded generators for all instance families; `python gen_instances.py {train,heldout} --out DIR` |
 | `to_lp.py` | convert a `.in` instance to CPLEX LP format for the oracles |
 | `oracle.py` | run GLPK + Gurobi, return their consensus optimum (raises on disagreement) |
-| `run_bench.py` | build solver, run corpus, correctness-check vs oracle, parse the solver's `-json` metrics → JSON report |
-| `compare.py` | baseline vs candidate → geomean + bootstrap CI + pivot ratio → ACCEPT/REJECT verdict + exit code |
+| `run_bench.py` | `run_corpus()`: build solver, run corpus, correctness-check vs oracle, parse the solver's `-json` metrics → report dict |
+| `compare.py` | `compare()` / `format_verdict()`: baseline vs candidate → geomean + bootstrap CI + pivot ratio → verdict |
 | `evaluate.py` | the single loop entry point tying it all together (pure Python, imports the modules above) |
 
 ## Measurement hygiene
