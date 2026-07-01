@@ -86,12 +86,14 @@ when judging a change — prefer `bland` (deterministic) or `max`. Keep the rule
 ## Invariants — violate these and the result is wrong or the run fails
 
 1. **Both refs must contain the `-json` solver code.** The timing/metrics come
-   from the solver's own `simplex -json --repeat N` output (added in commit
-   `d618027`). A ref *older* than that builds a solver with no `-json` flag; the
-   run then fails cleanly with **exit 2**, and the error output contains the
-   solver's `--help` text — that is the tell-tale sign you picked a pre-`-json`
-   ref. Fix: rebase the change onto a ref that has `-json`, or pick a newer
-   baseline.
+   solely from the solver's own `simplex -json --repeat N` output; there is no
+   fallback. A ref older than the `-json` commit builds a solver that rejects the
+   flag, and the harness detects this **up front** and stops with **exit 2** and a
+   clear message naming the ref (e.g. "ref 'baseline:main' has no -json support …
+   pick a baseline that already has -json, or rebase the -json commit onto it").
+   It does *not* try to measure such a ref — mixing an old ref's timing with a new
+   ref's would produce a meaningless comparison. Fix: pick a baseline that already
+   has `-json`, or rebase the `-json` commit onto the old ref first.
 
 2. **Comparisons are between committed refs, never the working tree.** Each ref is
    checked out fresh, so **uncommitted edits are not measured**. Commit your change
