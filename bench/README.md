@@ -128,13 +128,19 @@ that only wins by memorizing the train instances will not clear the held-out gat
 
 ## Measurement hygiene
 
-- **The solver times itself.** In `-json --repeat N` mode the solver re-solves
-  each instance N times *in-process* and reports the min and median solve time.
-  Because the timing loop is inside the program, it excludes process startup and
-  input parsing — so the metric is intrinsic solve cost, not a ~4 ms startup
-  floor. `--trials` (default 15) sets N. The **minimum** is the point estimate
-  (least perturbed by external interference for a deterministic CPU-bound task);
-  the median is recorded alongside.
+- **The solver times itself, with warmup + multiple samples.** In
+  `-json --repeat N --warmup W` mode the solver runs W untimed solves (default
+  W=3, via `--warmup`) to reach steady state, then N timed solves (default N=15,
+  via `--trials`), reporting the min and median over the N samples. The timing
+  loop is *in-process*, so it excludes process startup and input parsing — the
+  metric is intrinsic solve cost, not a ~4 ms startup floor. The **minimum** is
+  the point estimate (least perturbed by external interference for a
+  deterministic CPU-bound task); the median is recorded alongside.
+- **Near-threshold verdicts need more samples.** At the default `--trials 15` the
+  laptop noise floor is a few percent, so a *true* speedup under ~3–4 % can
+  occasionally flip a self-vs-self comparison to a false ACCEPT. For a change in
+  that range, raise `--trials` (e.g. 30) — a self-vs-self check then stays
+  correctly REJECTED, confirming the floor is below your signal.
 - Each ref is built with `dune build` in its own temporary git worktree, isolated
   from every other checkout's `_build`.
 - Bootstrap uses a fixed seed (`compare.py`), so a verdict is reproducible given

@@ -76,7 +76,12 @@ means the benchmark itself is broken and the verdict cannot be trusted.
 | `--baseline <ref>` | *(required)* | git ref for the revision to beat |
 | `--candidate <ref>` | *(required)* | git ref for the revision under test |
 | `--rule <name>` / `RULE=` | `bland` | pivot rule: `bland`, `max`, or `myrule` |
-| `--trials <N>` / `TRIALS=` | `15` | in-process re-solves per instance for timing |
+| `--trials <N>` / `TRIALS=` | `15` | timed in-process re-solves per instance |
+| `--warmup <W>` / `WARMUP=` | `3` | untimed in-process warmup solves per instance |
+
+Raise `--trials` (e.g. 30) when judging a small (<~4 %) speedup: at the default
+the laptop noise floor can occasionally flip a borderline verdict. A self-vs-self
+comparison should stay REJECTED; if it doesn't, increase `--trials`.
 
 `--rule myrule` is **randomized** (mixes bland/max via `Random.bool`), so its
 pivot count and timing are non-deterministic run-to-run. Do not use it as the rule
