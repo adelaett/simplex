@@ -34,13 +34,27 @@ let prog_make (n, m) a b c =
 
 type var = int
 
+(* Fraction-free (Edmonds/Bareiss) tableau: every cell is an integer numerator
+   over one positive shared denominator [d]. The rational value of a cell is
+   [Q.make entry tb.d]. The objective rows share the same denominator [d]. This
+   keeps coefficients integer and bounded by the relevant sub-determinant instead
+   of letting Q.t numerators/denominators blow up and paying a GCD every op.
+
+   Invariants: [d > 0]; every printed/observed value is exactly the same rational
+   as the old Q.t tableau, so the Bland/max pivot sequence and final answers are
+   unchanged. Selection only compares signs ([Z.sign]) and ratios ([Q.make b pv]),
+   both denominator-invariant. *)
 type tableau = {
-  t : Q.t array array;
+  t : Z.t array array;
+  mutable d : Z.t;
   basis : var array;
   mutable variables : var list list;
   mutable var_set : var list;
-  mutable objectives : Q.t array list;
+  mutable objectives : Z.t array list;
 }
+
+(* Value of a stored numerator under the tableau's shared denominator. *)
+let cell tb x = Q.make x tb.d
 
 let string_of_rat x =
   if !ez then
@@ -51,11 +65,13 @@ let string_of_rat x =
     else " +"
   else Q.to_string x
 
-let string_of_line a =
+let string_of_line tb a =
   let rec aux l =
     match l with [] -> l | [ _ ] -> "|" :: l | h :: t -> h :: aux t
   in
-  Array.to_list a |> List.map string_of_rat |> aux |> String.concat "  "
+  Array.to_list a
+  |> List.map (fun x -> string_of_rat (cell tb x))
+  |> aux |> String.concat "  "
 
 let print_tableau tb =
   match tb.objectives with
@@ -63,14 +79,14 @@ let print_tableau tb =
       List.iter
         (fun x ->
           print_string "           ";
-          print_endline (string_of_line x))
+          print_endline (string_of_line tb x))
         t;
       print_string "maximize   ";
-      print_endline (string_of_line (List.hd tb.objectives));
+      print_endline (string_of_line tb (List.hd tb.objectives));
       print_endline (String.make !width '-');
       for i = 0 to Array.length tb.t - 1 do
         if i = 0 then print_string "subject to " else print_string "           ";
-        print_endline (string_of_line tb.t.(i))
+        print_endline (string_of_line tb tb.t.(i))
       done
   | _ ->
       failwith
@@ -141,8 +157,23 @@ let tableau_convert (p : prog) =
 
   let var_set = List.flatten variables in
 
+  (* Convert the rational tableau to fraction-free form: pick one shared
+     denominator [d] = lcm of every cell's denominator (across the constraint
+     rows and every objective row), then store integer numerators [value * d].
+     The value of a stored cell is exactly [Q.make entry d], so this is
+     behaviour-preserving. *)
+  let d = ref Z.one in
+  let acc_den x = d := Z.lcm !d (Q.den x) in
+  Array.iter (Array.iter acc_den) t;
+  List.iter (Array.iter acc_den) objs;
+  let d = !d in
+  let scale x = Q.to_bigint (Q.mul x (Q.of_bigint d)) in
+  let t = Array.map (Array.map scale) t in
+  let objs = List.map (Array.map scale) objs in
+
   {
     t;
+    d;
     basis = Array.of_list (n -- (n + m - 1));
     variables;
     var_set;
@@ -151,19 +182,18 @@ let tableau_convert (p : prog) =
 
 let tableau_is_phase_one tb = List.length tb.objectives = 2
 
-let combi_lin a b c =
-  assert (Array.length a = Array.length b);
+(* Fraction-free row elimination (Edmonds/Bareiss). Row [row] is the pivot row,
+   [pcol] its column [x] entry (the pivot numerator [p]), [dprev] the tableau's
+   shared denominator before this pivot. For a non-pivot row [a]:
+     a.(j) <- (a.(j) * p - a.(x) * row.(j)) / dprev
+   The Sylvester identity guarantees [dprev] divides the numerator exactly, so
+   [Z.divexact] is safe. The pivot-column entry a.(x) becomes 0. *)
+let ff_eliminate a row ~pcol ~acol ~dprev =
   let n = Array.length a in
-
-  for i = 0 to n - 1 do
-    a.(i) <- Q.add a.(i) (Q.mul b.(i) c)
-  done
-
-let mul_lin a c =
-  let n = Array.length a in
-
-  for i = 0 to n - 1 do
-    a.(i) <- Q.mul a.(i) c
+  (* a.(acol) is mutated below; capture it first. *)
+  let factor = a.(acol) in
+  for j = 0 to n - 1 do
+    a.(j) <- Z.divexact (Z.sub (Z.mul a.(j) pcol) (Z.mul factor row.(j))) dprev
   done
 
 let do_pivot tb x y =
@@ -175,21 +205,33 @@ let do_pivot tb x y =
   if !verbose then print_endline ("leaving :  " ^ string_of_int tb.basis.(y));
   assert (List.mem x var_set);
   assert (0 <= y && y < m);
-  assert (not (Q.equal t.(y).(x) Q.zero));
+  assert (not (Z.equal t.(y).(x) Z.zero));
 
-  mul_lin t.(y) (Q.inv t.(y).(x));
+  let dprev = tb.d in
+  let p = t.(y).(x) in
+  let row = t.(y) in
 
+  (* Eliminate column [x] from every other constraint row and every objective
+     row, keeping the pivot row [t.(y)] untouched: with the new shared
+     denominator [d = p], its value [row.(j)/p] already has pivot cell = 1. *)
   for i = 0 to m - 1 do
-    if i <> y then
-      let ratio = Q.neg t.(i).(x) in
-      combi_lin t.(i) t.(y) ratio
+    if i <> y then ff_eliminate t.(i) row ~pcol:p ~acol:x ~dprev
   done;
+  List.iter (fun v -> ff_eliminate v row ~pcol:p ~acol:x ~dprev) objectives;
 
-  List.iter
-    (fun v ->
-      let ratio = Q.neg v.(x) in
-      combi_lin v t.(y) ratio)
-    objectives;
+  (* Fraction-free arithmetic can yield a negative pivot [p]; keep [d > 0] by
+     flipping the sign of [d] and, equivalently, of every stored numerator so
+     that every cell value [entry/d] is preserved. *)
+  if Z.sign p < 0 then (
+    let negate_row a =
+      for j = 0 to Array.length a - 1 do
+        a.(j) <- Z.neg a.(j)
+      done
+    in
+    Array.iter negate_row t;
+    List.iter negate_row objectives;
+    tb.d <- Z.neg p)
+  else tb.d <- p;
 
   basis.(y) <- x;
 
@@ -213,10 +255,12 @@ let choose_entering tb =
     else failwith "Unkown rule"
   in
 
+  (* [d > 0], so the sign/order of a reduced cost [obj.(x)/d] matches that of its
+     integer numerator [obj.(x)]: compare numerators directly. *)
   if rule_choosen = "bland" then (
     let v = ref None in
     List.iter
-      (fun x -> if Q.gt obj.(x) Q.zero && is_none !v then v := Some x)
+      (fun x -> if Z.sign obj.(x) > 0 && is_none !v then v := Some x)
       tb.var_set;
 
     if !debug then print_endline "fin entering";
@@ -224,9 +268,9 @@ let choose_entering tb =
   else if rule_choosen = "max" then (
     let v = ref [] in
     List.iter
-      (fun x -> if Q.gt obj.(x) Q.zero then v := (obj.(x), x) :: !v)
+      (fun x -> if Z.sign obj.(x) > 0 then v := (obj.(x), x) :: !v)
       tb.var_set;
-    let v = List.fast_sort (lex_compare Q.compare compare) !v in
+    let v = List.fast_sort (lex_compare Z.compare compare) !v in
     Option.map snd (List.nth_opt v 0))
   else failwith "Unkown rule"
 
@@ -239,20 +283,22 @@ let choose_leaving ?(ignore_neg = false) tb x =
   if not ignore_neg then assert (m > 0);
   let n = Array.length t.(0) - 1 in
   for i = 0 to m - 1 do
-    (* b_i / a[i][j] *)
+    (* b_i / a[i][j]: both are numerators over the same shared denominator [d],
+       so [d] cancels in the ratio and [Q.make bound pivot] is exact. Signs are
+       denominator-invariant since [d > 0]. *)
     let bound = t.(i).(n) in
     let pivot = t.(i).(x) in
 
-    if not ignore_neg then assert (Q.geq bound Q.zero);
+    if not ignore_neg then assert (Z.sign bound >= 0);
 
     if !debug then
       print_endline
-        ("leaving look at " ^ Q.to_string bound ^ ", " ^ Q.to_string pivot);
+        ("leaving look at " ^ Z.to_string bound ^ ", " ^ Z.to_string pivot);
 
-    if Q.lt Q.zero pivot && Q.leq Q.zero bound then
-      v := (Q.div bound pivot, i) :: !v
-    else if ignore_neg && not (Q.equal Q.zero pivot) then
-      v := (Q.div bound pivot, i) :: !v
+    if Z.sign pivot > 0 && Z.sign bound >= 0 then
+      v := (Q.make bound pivot, i) :: !v
+    else if ignore_neg && not (Z.equal Z.zero pivot) then
+      v := (Q.make bound pivot, i) :: !v
   done;
 
   let v = List.fast_sort (lex_compare Q.compare compare) !v in
@@ -273,14 +319,14 @@ let get_values tb =
   let x_opt = Array.make n Q.zero in
 
   Array.iteri
-    (fun i x -> if List.mem x v then x_opt.(x) <- tb.t.(i).(bounds))
+    (fun i x -> if List.mem x v then x_opt.(x) <- cell tb tb.t.(i).(bounds))
     tb.basis;
 
   let obj = List.hd tb.objectives in
 
   if !debug then print_endline "fin get_values";
 
-  (x_opt, Q.neg obj.(bounds))
+  (x_opt, Q.neg (cell tb obj.(bounds)))
 
 let rec iter_simplex tb () =
   match choose_entering tb with
@@ -306,13 +352,14 @@ let transition tb =
         (* custom choose of some variable which is positive *)
         let line = array_find tb.basis x in
         let n = Array.length t.(line) in
-        assert (t.(line).(n - 1) = Q.zero);
+        assert (Z.equal t.(line).(n - 1) Z.zero);
         let v = ref None in
 
         (* iterate on the existing variables *)
         List.iter
           (fun y ->
-            if not (x = y) then if t.(line).(y) <> Q.zero then v := Some y)
+            if not (x = y) then
+              if not (Z.equal t.(line).(y) Z.zero) then v := Some y)
           new_vars;
 
         match !v with Some y -> do_pivot tb y line | None -> assert false))
