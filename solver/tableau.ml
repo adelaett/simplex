@@ -252,20 +252,39 @@ let ff_eliminate a row p c dprev =
   let unit_d = Z.equal dprev Z.one in
   let ac = a.(c) in
   if Z.equal ac Z.zero then
-    (* Pivot column already zero in this row: rescale only. *)
-    (if unit_d then for j = 0 to n - 1 do a.(j) <- Z.mul a.(j) p done
-     else for j = 0 to n - 1 do a.(j) <- Z.divexact (Z.mul a.(j) p) dprev done)
+    (* Pivot column already zero in this row: rescale only. A zero entry stays
+       zero under the rescale, so skip it (these tableaux are ~65-80% zero and
+       the whole point of fraction-free is to avoid needless bignum ops). *)
+    (if unit_d then
+       for j = 0 to n - 1 do
+         let aj = a.(j) in
+         if not (Z.equal aj Z.zero) then a.(j) <- Z.mul aj p
+       done
+     else
+       for j = 0 to n - 1 do
+         let aj = a.(j) in
+         if not (Z.equal aj Z.zero) then a.(j) <- Z.divexact (Z.mul aj p) dprev
+       done)
   else if unit_d then
     for j = 0 to n - 1 do
-      let r = row.(j) in
-      if Z.equal r Z.zero then a.(j) <- Z.mul a.(j) p
-      else a.(j) <- Z.sub (Z.mul a.(j) p) (Z.mul ac r)
+      let aj = a.(j) and r = row.(j) in
+      (* new entry = aj*p - ac*r. Skip the (very common) aj=0,r=0 case entirely;
+         when only aj=0 the first product vanishes; when only r=0 the second. *)
+      if Z.equal aj Z.zero then
+        (if not (Z.equal r Z.zero) then a.(j) <- Z.neg (Z.mul ac r))
+      else if Z.equal r Z.zero then a.(j) <- Z.mul aj p
+      else a.(j) <- Z.sub (Z.mul aj p) (Z.mul ac r)
     done
   else
     for j = 0 to n - 1 do
-      let r = row.(j) in
-      if Z.equal r Z.zero then a.(j) <- Z.divexact (Z.mul a.(j) p) dprev
-      else a.(j) <- Z.divexact (Z.sub (Z.mul a.(j) p) (Z.mul ac r)) dprev
+      let aj = a.(j) and r = row.(j) in
+      (* Same numerator [aj*p - ac*r], then the exact /dprev. divexact of 0 is 0,
+         so the aj=0,r=0 case is a pure skip. *)
+      if Z.equal aj Z.zero then
+        (if not (Z.equal r Z.zero) then
+           a.(j) <- Z.divexact (Z.neg (Z.mul ac r)) dprev)
+      else if Z.equal r Z.zero then a.(j) <- Z.divexact (Z.mul aj p) dprev
+      else a.(j) <- Z.divexact (Z.sub (Z.mul aj p) (Z.mul ac r)) dprev
     done
 
 let do_pivot tb x y =
