@@ -396,19 +396,37 @@ let choose_entering tb =
     Option.map (fun (_, _, x) -> x) !best)
   else failwith "Unkown rule"
 
+(* Exact comparison of the ratios [b1/p1] and [b2/p2] without building either as
+   a [Q.t]. [Q.make] reduces its argument by a GCD before we ever use it, and
+   [Q.compare] then cross-multiplies — two GCD-carrying steps to answer one
+   sign question. Cross-multiply directly instead: with
+   [q = b1*p2 - b2*p1], the sign of [b1/p1 - b2/p2] is
+   [sign(q) * sign(p1) * sign(p2)]. This yields the same ordering as
+   [Q.compare (Q.make b1 p1) (Q.make b2 p2)] for any nonzero pivots, using only
+   exact [Z.mul]/[Z.sub]/[Z.sign] on the shared-denominator integers — no GCD,
+   no allocation of reduced rationals. *)
+let ratio_compare b1 p1 b2 p2 =
+  let q = Z.sub (Z.mul b1 p2) (Z.mul b2 p1) in
+  compare (Z.sign q * Z.sign p1 * Z.sign p2) 0
+
 let choose_leaving ?(ignore_neg = false) tb x =
   if !debug then print_endline "début leaving";
   if !debug then print_tableau tb;
   let { t; _ } = tb in
-  let v = ref [] in
   let m = Array.length t in
   if not ignore_neg then assert (m > 0);
   let n = Array.length t.(0) - 1 in
-  (* All entries share the positive denominator [tb.d]. The ratio bound/pivot
-     is therefore [B/P] (the [d]'s cancel): we compute it as [Q.make B P],
-     which is exactly equal to the original [Q.div (B/d) (P/d)] and keeps the
-     leaving-variable ordering bit-identical. Only the (at most [m]) candidate
-     ratios are materialised as [Q.t]. *)
+  (* Minimum-ratio test. All entries share the positive denominator [tb.d], so
+     the ratio bound/pivot is [B/P] (the [d]'s cancel). We only ever need the
+     argmin (ties broken by the smallest row index), so scan linearly for it
+     instead of building a list of reduced [Q.t] ratios and full-sorting it: the
+     old code paid a [Q.make] GCD per candidate and an O(k log k) sort to read a
+     single element. [ratio_compare] keeps the ordering bit-identical while
+     dropping the GCDs. Scanning [i] upward with a strict [<] keeps the
+     lowest-index tie-break the stable sort produced. *)
+  let best_i = ref (-1) in
+  let best_b = ref Z.zero in
+  let best_p = ref Z.one in
   for i = 0 to m - 1 do
     (* b_i / a[i][j] *)
     let b = t.(i).(n) in
@@ -420,18 +438,19 @@ let choose_leaving ?(ignore_neg = false) tb x =
       print_endline
         ("leaving look at " ^ Z.to_string b ^ ", " ^ Z.to_string pv);
 
-    if Z.sign pv > 0 && Z.sign b >= 0 then v := (Q.make b pv, i) :: !v
-    else if ignore_neg && not (Z.equal Z.zero pv) then
-      v := (Q.make b pv, i) :: !v
+    let eligible =
+      if not ignore_neg then Z.sign pv > 0 && Z.sign b >= 0
+      else not (Z.equal Z.zero pv)
+    in
+    if eligible && (!best_i < 0 || ratio_compare b pv !best_b !best_p < 0) then begin
+      best_i := i;
+      best_b := b;
+      best_p := pv
+    end
   done;
 
-  let v = List.fast_sort (lex_compare Q.compare compare) !v in
-  if !debug then
-    print_endline
-      (String.concat "; "
-         (List.map (fun (a, b) -> Q.to_string a ^ ", " ^ string_of_int b) v));
   if !debug then print_endline "fin leaving";
-  Option.map snd (List.nth_opt v 0)
+  if !best_i < 0 then None else Some !best_i
 
 type result = Finished of Q.t array * Q.t | Unbounded | Paused | Unfeasible
 
